@@ -1,0 +1,50 @@
+# Don't ship the Next.js frontend, IDE noise, or local DB into the container.
+# Keep the build context tiny so `fly deploy` is fast and reproducible.
+
+# --- Frontend (Vercel handles it) ---
+node_modules/
+.next/
+out/
+build/
+dist/
+app/
+components/
+lib/
+public/
+*.config.mjs
+*.config.ts
+postcss.config.*
+tailwind.config.*
+tsconfig.json
+next-env.d.ts
+package.json
+package-lock.json
+
+# --- Local Python dev artifacts ---
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+outreach/tests/
+
+# --- Local data + secrets (NEVER ship) ---
+*.db
+*.sqlite3
+.env
+.env.*
+
+# --- VCS / OS / IDE ---
+.git/
+.gitignore
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- Markdown / docs ---
+*.md
+!outreach/README.md

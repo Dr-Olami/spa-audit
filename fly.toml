@@ -1,0 +1,58 @@
+# fly.toml -- spa-audit backend (FastAPI + sqladmin + APScheduler)
+#
+# Free-tier-friendly config:
+#   * 1 shared-cpu-1x VM, 256 MB RAM (well under the 3-VM free quota).
+#   * `auto_stop_machines = false` so the scheduler + Twilio webhook stay up
+#     24/7. Stopping VMs would silently miss daily cron jobs.
+#   * Persistent 1 GB volume mounted at /data for the SQLite DB. Without
+#     this every `fly deploy` would wipe leads.db.
+#
+# After `fly launch --no-deploy` adjusts `app` and `primary_region` for you,
+# review and re-apply the volume mount + non-default flags below.
+
+app = "spa-audit-api"            # change in `fly launch` if name is taken
+primary_region = "lhr"           # London. Pick "jnb" for Johannesburg if available.
+kill_signal = "SIGTERM"
+kill_timeout = 30                # let APScheduler.shutdown() finish in-flight jobs
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  # Reason: SQLite path inside the mounted volume so data survives deploys.
+  DATABASE_URL = "sqlite:////data/leads.db"
+  WEBHOOK_HOST = "0.0.0.0"
+  WEBHOOK_PORT = "8000"
+  TWILIO_USE_SANDBOX = "false"
+  TWILIO_WEBHOOK_VALIDATE = "true"
+  SCHEDULER_ENABLED = "true"
+
+# All real secrets are set via `fly secrets set` so they never land in git.
+# Required: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_FROM,
+#           GOOGLE_PLACES_API_KEY, ADMIN_USERS, ADMIN_SESSION_SECRET,
+#           API_TOKEN, CAL_WEBHOOK_SECRET, LANDING_URL, CAL_URL,
+#           TWILIO_TEMPLATE_ICEBREAKER_SID (when you have the approved template)
+
+[[mounts]]
+  source = "leads_data"          # created via: fly volume create leads_data --size 1
+  destination = "/data"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = false     # keep the scheduler awake; webhooks stay sub-second
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/health"
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 256
