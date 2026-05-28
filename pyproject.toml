@@ -23,6 +23,7 @@ dependencies = [
     "tenacity>=8.5",
     "sqladmin>=0.20.1",
     "itsdangerous>=2.2.0",
+    "apscheduler>=3.10",
 ]
 
 [project.optional-dependencies]
